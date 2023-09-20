@@ -11,3 +11,4 @@ nltk
 penman
 amr-logic-converter
 scipy
+bitsandbytes
