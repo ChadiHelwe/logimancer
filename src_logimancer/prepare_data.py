@@ -19,7 +19,7 @@ IGNORE_INDEX = -1
 
 def prepare(
     destination_path: Path = Path("datasets"),
-    checkpoint_dir: Path = Path("models/llama-2-7b/tokenizer.model"),
+    checkpoint_dir: Path = Path("models/llama-2-7b"),
     test_split_fraction: float = 0.1,
     seed: int = 42,
     mask_inputs: bool = False,  # as in alpaca-lora
