@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 from lit_gpt.tokenizer import Tokenizer
 
-DATA_FILE_NAME = "logicmancer_dataset.json"
+DATA_FILE_NAME = "logimancer_dataset.json"
 IGNORE_INDEX = -1
 
 
