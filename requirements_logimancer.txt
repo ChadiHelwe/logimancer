@@ -1,0 +1,13 @@
+torch
+datasets
+openai
+transformers
+pytorch-lightning
+sentencepiece
+pandas
+tqdm
+aima3
+nltk
+penman
+amr-logic-converter
+scipy

@@ -3,14 +3,18 @@ __pycache__
 .DS_Store
 *.egg-info
 build
-.venv
-.vscode
 
 # data
 data
-datasets
 checkpoints
 out
+!data/shakespeare/prepare.py
 wandb
 
-tests/original_falcon_40b.py
+# downloaded by our tests
+original_model.py
+original_adapter.py
+
+env/*
+*.json
+*.pth
