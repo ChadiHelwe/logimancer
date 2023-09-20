@@ -19,12 +19,13 @@ IGNORE_INDEX = -1
 
 def prepare(
     destination_path: Path = Path("datasets"),
-    tokenizer_path: Path = Path("models/llama-2-7b/tokenizer.model"),
-    test_split_size: int = 31467,
-    max_seq_length: int = 512,
+    checkpoint_dir: Path = Path("models/llama-2-7b/tokenizer.model"),
+    test_split_fraction: float = 0.1,
     seed: int = 42,
     mask_inputs: bool = False,  # as in alpaca-lora
     data_file_name: str = DATA_FILE_NAME,
+    ignore_index: int = -1,
+    max_seq_length: int = 512,
 ) -> None:
     """Prepare the Logicmacer dataset for instruction tuning.
 
@@ -36,41 +37,49 @@ def prepare(
     file_path = destination_path / data_file_name
 
     # TODO: If we don't have the Meta weights, where do we get the tokenizer from?
-    tokenizer = Tokenizer(tokenizer_path)
 
     with open(file_path, "r") as file:
         data = json.load(file)
 
+    print("Loading tokenizer...")
+    tokenizer = Tokenizer(checkpoint_dir)
+
     # Partition the dataset into train and test
-    train_split_size = len(data) - test_split_size
     train_set, test_set = random_split(
-        data,
-        lengths=(train_split_size, test_split_size),
-        generator=torch.Generator().manual_seed(seed),
+        data, [1.0 - test_split_fraction, test_split_fraction], generator=torch.Generator().manual_seed(seed)
     )
     train_set, test_set = list(train_set), list(test_set)
 
     print(f"train has {len(train_set):,} samples")
-    print(f"val has {len(test_set):,} samples")
+    print(f"test has {len(test_set):,} samples")
 
     print("Processing train split ...")
     train_set = [
-        prepare_sample(sample, tokenizer, max_seq_length, mask_inputs)
+        prepare_sample(
+            example=sample,
+            tokenizer=tokenizer,
+            max_length=max_seq_length,
+            mask_inputs=mask_inputs,
+            ignore_index=ignore_index,
+        )
         for sample in tqdm(train_set)
     ]
-    torch.save(train_set, file_path.parent / "train.pt")
+    torch.save(train_set, destination_path / "train.pt")
 
     print("Processing test split ...")
     test_set = [
-        prepare_sample(sample, tokenizer, max_seq_length, mask_inputs)
+        prepare_sample(
+            example=sample,
+            tokenizer=tokenizer,
+            max_length=max_seq_length,
+            mask_inputs=mask_inputs,
+            ignore_index=ignore_index,
+        )
         for sample in tqdm(test_set)
     ]
-    torch.save(test_set, file_path.parent / "test.pt")
+    torch.save(test_set, destination_path / "test.pt")
 
-
-def prepare_sample(
-    example: dict, tokenizer: Tokenizer, max_length: int, mask_inputs: bool = True
-):
+def prepare_sample(example: dict, tokenizer: Tokenizer, max_length: int, mask_inputs: bool, ignore_index: int):
     """Processes a single sample.
 
     Each sample in the dataset consists of:
@@ -80,27 +89,22 @@ def prepare_sample(
     - output: The response string
 
     This function processes this data to produce a prompt text and a label for
-    supervised training. The input text is formed as a single message including all
-    the instruction, the input (optional) and the response.
-    The label/target is the same message but can optionally have the instruction + input text
-    masked out (mask_inputs=True).
+    supervised training. The prompt text is formed as a single message including both
+    the instruction and the input. The label/target is the same message but with the
+    response attached.
 
     Finally, both the prompt and the label get tokenized. If desired, all tokens
     in the label that correspond to the original input prompt get masked out (default).
     """
     full_prompt = generate_prompt(example)
     full_prompt_and_response = full_prompt + example["output"]
-    encoded_full_prompt = tokenize(
-        tokenizer, full_prompt, max_length=max_length, eos=False
-    )
-    encoded_full_prompt_and_response = tokenize(
-        tokenizer, full_prompt_and_response, eos=True, max_length=max_length
-    )
+    encoded_full_prompt = tokenizer.encode(full_prompt, max_length=max_length)
+    encoded_full_prompt_and_response = tokenizer.encode(full_prompt_and_response, eos=True, max_length=max_length)
 
     # The labels are the full prompt with response, but with the prompt masked out
     labels = encoded_full_prompt_and_response.clone()
     if mask_inputs:
-        labels[: len(encoded_full_prompt)] = IGNORE_INDEX
+        labels[: len(encoded_full_prompt)] = ignore_index
 
     return {
         **example,
@@ -108,12 +112,6 @@ def prepare_sample(
         "input_ids_no_response": encoded_full_prompt,
         "labels": labels,
     }
-
-
-def tokenize(
-    tokenizer: Tokenizer, string: str, max_length: int, eos=True
-) -> torch.Tensor:
-    return tokenizer.encode(string, bos=True, eos=eos, max_length=max_length)
 
 
 def generate_prompt(example):
@@ -131,6 +129,7 @@ def generate_prompt(example):
         "Write a response that appropriately completes the request.\n\n"
         f"### Instruction:\n{example['instruction']}\n\n### Response:"
     )
+
 
 
 if __name__ == "__main__":
