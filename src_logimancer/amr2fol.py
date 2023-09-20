@@ -106,7 +106,7 @@ if __name__ == "__main__":
         "datasets/amr_annotation_3.0/data/amrs/split/dev",
     ]
 
-    with open("logicmancer_dataset.json", "w") as out:
+    with open("datasets/logimancer_dataset.json", "w") as out:
         out.write("[\n")
         tmp_data = []
         for s, a, f in converter.process_directory(root_dir):
