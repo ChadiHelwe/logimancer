@@ -35,7 +35,7 @@ eval_max_new_tokens = 100
 log_interval = 1
 devices = 1
 # change this value to force a maximum sequence length
-override_max_seq_length = 512 # None
+override_max_seq_length = None
 
 # Hyperparameters
 learning_rate = 3e-4
@@ -313,4 +313,4 @@ def save_lora_checkpoint(fabric, model, file_path: Path):
 if __name__ == "__main__":
     # Uncomment this line if you see an error: "Expected is_sm80 to be true, but got false"
     # torch.backends.cuda.enable_flash_sdp(False)
-    setup()
+    setup(precision="bf16-true")
