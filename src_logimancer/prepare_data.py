@@ -19,7 +19,7 @@ IGNORE_INDEX = -1
 
 def prepare(
     destination_path: Path = Path("datasets"),
-    checkpoint_dir: Path = Path("models/Llama-2-7b-hf"),
+    checkpoint_dir: Path = Path("checkpoints/meta-llama/Llama-2-7b-hf"),
     test_split_fraction: float = 0.1,
     seed: int = 42,
     mask_inputs: bool = False,  # as in alpaca-lora
