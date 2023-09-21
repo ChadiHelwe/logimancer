@@ -61,7 +61,7 @@ hparams = {k: v for k, v in locals().items() if isinstance(v, (int, float, str))
 
 def setup(
     data_dir: Path = Path("datasets"),
-    checkpoint_dir: Path = Path("models/llama-2-7b"),
+    checkpoint_dir: Path = Path("models/Llama-2-7b-hf"),
     out_dir: Path = Path("out/lora/logimancer"),
     precision: Optional[str] = None,
     quantize: Optional[Literal["bnb.nf4", "bnb.nf4-dq", "bnb.fp4", "bnb.fp4-dq"]] = None,
