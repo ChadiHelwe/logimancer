@@ -313,4 +313,4 @@ def save_lora_checkpoint(fabric, model, file_path: Path):
 if __name__ == "__main__":
     # Uncomment this line if you see an error: "Expected is_sm80 to be true, but got false"
     # torch.backends.cuda.enable_flash_sdp(False)
-    main()
+    setup()
