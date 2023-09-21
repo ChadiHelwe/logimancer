@@ -12,3 +12,4 @@ penman
 amr-logic-converter
 scipy
 bitsandbytes
+huggingface_hub

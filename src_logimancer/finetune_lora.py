@@ -56,7 +56,11 @@ lora_mlp = False
 lora_head = False
 warmup_steps = 100
 
-hparams = {k: v for k, v in locals().items() if isinstance(v, (int, float, str)) and not k.startswith("_")}
+hparams = {
+    k: v
+    for k, v in locals().items()
+    if isinstance(v, (int, float, str)) and not k.startswith("_")
+}
 
 
 def setup(
@@ -64,7 +68,9 @@ def setup(
     checkpoint_dir: Path = Path("checkpoints/meta-llama/Llama-2-7b-hf"),
     out_dir: Path = Path("out/lora/logimancer"),
     precision: Optional[str] = None,
-    quantize: Optional[Literal["bnb.nf4", "bnb.nf4-dq", "bnb.fp4", "bnb.fp4-dq"]] = None,
+    quantize: Optional[
+        Literal["bnb.nf4", "bnb.nf4-dq", "bnb.fp4", "bnb.fp4-dq"]
+    ] = None,
 ):
     precision = precision or get_default_supported_precision(training=True)
 
@@ -84,13 +90,23 @@ def setup(
     else:
         strategy = "auto"
 
-    logger = step_csv_logger(out_dir.parent, out_dir.name, flush_logs_every_n_steps=log_interval)
-    fabric = L.Fabric(devices=fabric_devices, strategy=strategy, precision=precision, loggers=logger)
+    logger = step_csv_logger(
+        out_dir.parent, out_dir.name, flush_logs_every_n_steps=log_interval
+    )
+    fabric = L.Fabric(
+        devices=fabric_devices, strategy=strategy, precision=precision, loggers=logger
+    )
     fabric.print(hparams)
     fabric.launch(main, data_dir, checkpoint_dir, out_dir, quantize)
 
 
-def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path, quantize: Optional[str] = None):
+def main(
+    fabric: L.Fabric,
+    data_dir: Path,
+    checkpoint_dir: Path,
+    out_dir: Path,
+    quantize: Optional[str] = None,
+):
     check_valid_checkpoint_dir(checkpoint_dir)
 
     speed_monitor = SpeedMonitor(fabric, window_size=50, time_unit="seconds")
@@ -103,7 +119,9 @@ def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path, 
     train_data = torch.load(data_dir / "train.pt")
     val_data = torch.load(data_dir / "test.pt")
 
-    if not any((lora_query, lora_key, lora_value, lora_projection, lora_mlp, lora_head)):
+    if not any(
+        (lora_query, lora_key, lora_value, lora_projection, lora_mlp, lora_head)
+    ):
         fabric.print("Warning: all LoRA layers are disabled!")
     config = Config.from_name(
         name=checkpoint_dir.name,
@@ -123,8 +141,12 @@ def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path, 
         model = GPT(config)
     mark_only_lora_as_trainable(model)
 
-    fabric.print(f"Number of trainable parameters: {num_parameters(model, requires_grad=True):,}")
-    fabric.print(f"Number of non trainable parameters: {num_parameters(model, requires_grad=False):,}")
+    fabric.print(
+        f"Number of trainable parameters: {num_parameters(model, requires_grad=True):,}"
+    )
+    fabric.print(
+        f"Number of non trainable parameters: {num_parameters(model, requires_grad=False):,}"
+    )
 
     if quantize:
         # for quantization, need to load before moving to device
@@ -136,9 +158,13 @@ def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path, 
     if quantize and quantize.startswith("bnb."):
         import bitsandbytes as bnb
 
-        optimizer = bnb.optim.PagedAdamW(trainable_params, lr=learning_rate, weight_decay=weight_decay)
+        optimizer = bnb.optim.PagedAdamW(
+            trainable_params, lr=learning_rate, weight_decay=weight_decay
+        )
     else:
-        optimizer = torch.optim.AdamW(trainable_params, lr=learning_rate, weight_decay=weight_decay)
+        optimizer = torch.optim.AdamW(
+            trainable_params, lr=learning_rate, weight_decay=weight_decay
+        )
     optimizer = fabric.setup_optimizers(optimizer)
 
     if not quantize:
@@ -148,7 +174,16 @@ def main(fabric: L.Fabric, data_dir: Path, checkpoint_dir: Path, out_dir: Path, 
     fabric.seed_everything(1337 + fabric.global_rank)
 
     train_time = time.perf_counter()
-    train(fabric, model, optimizer, train_data, val_data, checkpoint_dir, out_dir, speed_monitor)
+    train(
+        fabric,
+        model,
+        optimizer,
+        train_data,
+        val_data,
+        checkpoint_dir,
+        out_dir,
+        speed_monitor,
+    )
     fabric.print(f"Training time: {(time.perf_counter()-train_time):.2f}s")
     if fabric.device.type == "cuda":
         fabric.print(f"Memory used: {torch.cuda.max_memory_allocated() / 1e9:.02f} GB")
@@ -181,12 +216,16 @@ def train(
         # When comparing MFU or FLOP numbers with other projects that use estimated FLOPs,
         # consider passing `SpeedMonitor(flops_per_batch=estimated_flops)` instead
         estimated_flops = estimate_flops(meta_model) * micro_batch_size
-        fabric.print(f"Estimated TFLOPs: {estimated_flops * fabric.world_size / 1e12:.2f}")
+        fabric.print(
+            f"Estimated TFLOPs: {estimated_flops * fabric.world_size / 1e12:.2f}"
+        )
         # this assumes that all samples have a fixed length equal to the longest sequence length
         # which is most likely false during finetuning
         x = torch.randint(0, 1, (micro_batch_size, longest_seq_length))
         measured_flops = measure_flops(meta_model, x)
-        fabric.print(f"Measured TFLOPs: {measured_flops * fabric.world_size / 1e12:.2f}")
+        fabric.print(
+            f"Measured TFLOPs: {measured_flops * fabric.world_size / 1e12:.2f}"
+        )
         del meta_model, x
 
     step_count = 0
@@ -203,7 +242,10 @@ def train(
         iter_t0 = time.perf_counter()
 
         input_ids, targets = get_batch(
-            fabric, train_data, longest_seq_length, longest_seq_ix if iter_num == 0 else None
+            fabric,
+            train_data,
+            longest_seq_length,
+            longest_seq_ix if iter_num == 0 else None,
         )
 
         is_accumulating = (iter_num + 1) % gradient_accumulation_iters != 0
@@ -240,7 +282,9 @@ def train(
             val_loss = validate(fabric, model, val_data, tokenizer, longest_seq_length)
             t1 = time.perf_counter() - t0
             speed_monitor.eval_end(t1)
-            fabric.print(f"step {iter_num}: val loss {val_loss.item():.4f}, val time: {t1 * 1000:.2f}ms")
+            fabric.print(
+                f"step {iter_num}: val loss {val_loss.item():.4f}, val time: {t1 * 1000:.2f}ms"
+            )
             fabric.barrier()
         if not is_accumulating and step_count % save_interval == 0:
             checkpoint_path = out_dir / f"iter-{iter_num:06d}-ckpt.pth"
@@ -249,7 +293,11 @@ def train(
 
 @torch.inference_mode()
 def validate(
-    fabric: L.Fabric, model: GPT, val_data: List[Dict], tokenizer: Tokenizer, longest_seq_length: int
+    fabric: L.Fabric,
+    model: GPT,
+    val_data: List[Dict],
+    tokenizer: Tokenizer,
+    longest_seq_length: int,
 ) -> torch.Tensor:
     fabric.print("Validating ...")
     model.eval()
@@ -257,7 +305,9 @@ def validate(
     for k in range(eval_iters):
         input_ids, targets = get_batch(fabric, val_data, longest_seq_length)
         logits = model(input_ids)
-        losses[k] = chunked_cross_entropy(logits[..., :-1, :], targets[..., 1:], chunk_size=0)
+        losses[k] = chunked_cross_entropy(
+            logits[..., :-1, :], targets[..., 1:], chunk_size=0
+        )
     val_loss = losses.mean()
 
     model.train()
@@ -265,7 +315,10 @@ def validate(
 
 
 def get_batch(
-    fabric: L.Fabric, data: List[Dict], longest_seq_length: int, longest_seq_ix: Optional[int] = None
+    fabric: L.Fabric,
+    data: List[Dict],
+    longest_seq_length: int,
+    longest_seq_ix: Optional[int] = None,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     ix = torch.randint(len(data), (micro_batch_size,))
     if longest_seq_ix is not None:
@@ -300,7 +353,9 @@ def get_max_seq_length(data: List[Dict]) -> Tuple[int, int, int]:
     longest_seq_ix = lengths.index(max_seq_length)
     # support easy override at the top of the file
     return (
-        override_max_seq_length if isinstance(override_max_seq_length, int) else max_seq_length,
+        override_max_seq_length
+        if isinstance(override_max_seq_length, int)
+        else max_seq_length,
         max_seq_length,
         longest_seq_ix,
     )
@@ -309,6 +364,7 @@ def get_max_seq_length(data: List[Dict]) -> Tuple[int, int, int]:
 def save_lora_checkpoint(fabric, model, file_path: Path):
     fabric.print(f"Saving LoRA weights to {str(file_path)!r}")
     fabric.save(file_path, {"model": model}, filter={"model": lora_filter})
+
 
 if __name__ == "__main__":
     # Uncomment this line if you see an error: "Expected is_sm80 to be true, but got false"
