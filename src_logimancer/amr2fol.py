@@ -98,15 +98,24 @@ def generate_instruction_instances(sentence, amr, fol):
         {"instruction": INSTRUCTION_FOL_TO_AMR, "input": fol, "output": amr},
     ]
 
+def generate_instruction_text_to_amr_instances(sentence, amr):
+    return [
+        {"instruction": INSTRUCTION_TEXT_TO_AMR, "input": sentence, "output": amr},
+    ]
+
+def generate_instruction_text_to_fol_instances(sentence, fol):
+    return [
+        {"instruction": INSTRUCTION_TEXT_TO_FOL, "input": sentence, "output": fol},
+    ]
 
 if __name__ == "__main__":
     converter = AmrToFolConverter()
     root_dir = [
         "datasets/amr_annotation_3.0/data/amrs/split/training",
-        "datasets/amr_annotation_3.0/data/amrs/split/dev",
+        "datasets/amr_annotation_3.0/data/amrs/split/test",
     ]
 
-    with open("datasets/logimancer_dataset.json", "w") as out:
+    with open("datasets/test_amr_logimancer_dataset.json", "w") as out:
         out.write("[\n")
         tmp_data = []
         for s, a, f in converter.process_directory(root_dir):

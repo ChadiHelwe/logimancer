@@ -134,10 +134,10 @@ def eval(
     model = fabric.setup(model)
     tokenizer = Tokenizer(checkpoint_dir)
 
-    with open("results/results.csv", "w") as f:
+    with open("results/results_amr.csv", "w") as f:
         out = csv.writer(f)
         out.writerow(["instruction", "input", "output", "prediction"])
-        with open("datasets/test_logimancer_dataset.json", "r") as f:
+        with open("datasets/test_amr_logimancer_dataset.json", "r") as f:
             data = json.load(f)
             for i in tqdm(data):
                 instruction = i["instruction"]
