@@ -66,7 +66,7 @@ hparams = {
 def setup(
     data_dir: Path = Path("datasets"),
     checkpoint_dir: Path = Path("checkpoints/meta-llama/Llama-2-7b-hf"),
-    out_dir: Path = Path("out/lora/logimancer"),
+    out_dir: Path = Path("out/lora/amr_logimancer"),
     precision: Optional[str] = None,
     quantize: Optional[
         Literal["bnb.nf4", "bnb.nf4-dq", "bnb.fp4", "bnb.fp4-dq"]

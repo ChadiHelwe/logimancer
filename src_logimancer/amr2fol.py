@@ -111,6 +111,17 @@ def generate_instruction_text_to_fol_instances(sentence, fol):
         {"instruction": INSTRUCTION_TEXT_TO_FOL, "input": sentence, "output": fol},
     ]
 
+def generate_instruction_sentence_and_amr_instances(sentence, amr):
+    return [
+        {"instruction": INSTRUCTION_TEXT_TO_AMR, "input": sentence, "output": amr},
+        {"instruction": INSTRUCTION_AMR_TO_TEXT, "input": amr, "output": sentence},
+    ]
+
+def generate_instruction_sentence_and_fol_instances(sentence, fol):
+    return [
+        {"instruction": INSTRUCTION_TEXT_TO_FOL, "input": sentence, "output": fol},
+        {"instruction": INSTRUCTION_FOL_TO_TEXT, "input": fol, "output": sentence},
+    ]
 
 def eval_amr_to_fol(dataset):
     if dataset.endswith(".csv"):
@@ -123,7 +134,7 @@ def eval_amr_to_fol(dataset):
 
     cnt = 0
     cnt_correct = 0
-    for i in data.iterrows():
+    for _, i in data.iterrows():
         try:
             if amr2fol_converter.convert(i["prediction"]):
                 cnt_correct += 1
@@ -135,20 +146,22 @@ def eval_amr_to_fol(dataset):
 
 
 if __name__ == "__main__":
-    # converter = AmrToFolConverter()
-    # root_dir = [
-    #     "datasets/amr_annotation_3.0/data/amrs/split/training",
-    #     "datasets/amr_annotation_3.0/data/amrs/split/test",
-    # ]
+    converter = AmrToFolConverter()
+    root_dir = [
+        "datasets/amr_annotation_3.0/data/amrs/split/training",
+        "datasets/amr_annotation_3.0/data/amrs/split/dev",
+    ]
 
-    # with open("datasets/test_amr_logimancer_dataset.json", "w") as out:
-    #     out.write("[\n")
-    #     tmp_data = []
-    #     for s, a, f in converter.process_directory(root_dir):
-    #         dict_instruction_instances = generate_instruction_instances(s, a, f)
-    #         for instruction_instance in dict_instruction_instances:
-    #             tmp_data.append(json.dumps(instruction_instance))
-    #     out.write(",\n".join(tmp_data))
-    #     out.write("]")
+    with open("datasets/fol_sentence_logimancer_dataset.json", "w") as out:
+        out.write("[\n")
+        tmp_data = []
+        for s, a, f in converter.process_directory(root_dir):
+            dict_instruction_instances = generate_instruction_sentence_and_fol_instances(
+                s, f
+            )
+            for instruction_instance in dict_instruction_instances:
+                tmp_data.append(json.dumps(instruction_instance))
+        out.write(",\n".join(tmp_data))
+        out.write("]")
 
-    eval_amr_to_fol("results/results_amr.csv")
+    # eval_amr_to_fol("results/results_amr.csv")
