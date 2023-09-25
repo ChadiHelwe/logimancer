@@ -8,6 +8,7 @@ from typing import Literal, Optional
 import lightning as L
 import torch
 from lightning.fabric.strategies import FSDPStrategy
+from tqdm import tqdm
 
 # support running without installing as a package
 wd = Path(__file__).parent.parent.resolve()
@@ -138,7 +139,7 @@ def eval(
         out.writerow(["instruction", "input", "output", "prediction"])
         with open("datasets/test_logimancer_dataset.json", "r") as f:
             data = json.load(f)
-            for i in data:
+            for i in tqdm(data):
                 instruction = i["instruction"]
                 input = i["input"]
                 output = i["output"]
