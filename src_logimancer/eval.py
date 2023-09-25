@@ -16,7 +16,12 @@ sys.path.append(str(wd))
 from generate.base import generate
 from lit_gpt import Tokenizer
 from lit_gpt.lora import GPT, Block, Config, merge_lora_weights
-from lit_gpt.utils import check_valid_checkpoint_dir, get_default_supported_precision, lazy_load, quantization
+from lit_gpt.utils import (
+    check_valid_checkpoint_dir,
+    get_default_supported_precision,
+    lazy_load,
+    quantization,
+)
 from scripts.prepare_alpaca import generate_prompt
 
 lora_r = 8
@@ -33,8 +38,12 @@ lora_head = False
 def eval(
     lora_path: Path = Path("out/lora/logimancer/lit_model_lora_finetuned.pth"),
     checkpoint_dir: Path = Path("checkpoints/meta-llama/Llama-2-7b-hf"),
-    quantize: Optional[Literal["bnb.nf4", "bnb.nf4-dq", "bnb.fp4", "bnb.fp4-dq", "bnb.int8", "gptq.int4"]] = None,
-    max_new_tokens: int = 100,
+    quantize: Optional[
+        Literal[
+            "bnb.nf4", "bnb.nf4-dq", "bnb.fp4", "bnb.fp4-dq", "bnb.int8", "gptq.int4"
+        ]
+    ] = None,
+    max_new_tokens: int = 500,
     top_k: int = 200,
     temperature: float = 0.8,
     strategy: str = "auto",
@@ -96,17 +105,28 @@ def eval(
         model_file = "lit_model.pth"
     checkpoint_path = checkpoint_dir / model_file
 
-    fabric.print(f"Loading model {str(checkpoint_path)!r} with {config.__dict__}", file=sys.stderr)
+    fabric.print(
+        f"Loading model {str(checkpoint_path)!r} with {config.__dict__}",
+        file=sys.stderr,
+    )
     t0 = time.perf_counter()
     with fabric.init_module(empty_init=True), quantization(quantize):
         model = GPT(config)
-    fabric.print(f"Time to instantiate model: {time.perf_counter() - t0:.02f} seconds.", file=sys.stderr)
+    fabric.print(
+        f"Time to instantiate model: {time.perf_counter() - t0:.02f} seconds.",
+        file=sys.stderr,
+    )
 
     t0 = time.perf_counter()
-    with lazy_load(checkpoint_path) as checkpoint, lazy_load(lora_path) as lora_checkpoint:
+    with lazy_load(checkpoint_path) as checkpoint, lazy_load(
+        lora_path
+    ) as lora_checkpoint:
         checkpoint.update(lora_checkpoint.get("model", lora_checkpoint))
         model.load_state_dict(checkpoint, strict=quantize is None)
-    fabric.print(f"Time to load the model weights: {time.perf_counter() - t0:.02f} seconds.", file=sys.stderr)
+    fabric.print(
+        f"Time to load the model weights: {time.perf_counter() - t0:.02f} seconds.",
+        file=sys.stderr,
+    )
 
     model.eval()
     merge_lora_weights(model)
@@ -123,7 +143,7 @@ def eval(
                 input = i["input"]
                 output = i["output"]
                 instruction_input = {"instruction": instruction, "input": input}
-            
+
                 prompt = generate_prompt(instruction_input)
                 encoded = tokenizer.encode(prompt, device=fabric.device)
                 prompt_length = encoded.size(0)
@@ -136,7 +156,14 @@ def eval(
                     model.set_kv_cache(batch_size=1)
 
                 # t0 = time.perf_counter()
-                y = generate(model, encoded, max_returned_tokens, temperature=temperature, top_k=top_k, eos_id=tokenizer.eos_id)
+                y = generate(
+                    model,
+                    encoded,
+                    max_returned_tokens,
+                    temperature=temperature,
+                    top_k=top_k,
+                    eos_id=tokenizer.eos_id,
+                )
                 # t = time.perf_counter() - t0
 
                 prediction = tokenizer.decode(y)
